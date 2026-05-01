@@ -1,18 +1,37 @@
-from fastapi import APIRouter, UploadFile, File
-from app.services.scanner_service import analyze_prescription
+import os
+from PIL import Image
+from google import genai
+from dotenv import load_dotenv
+import json
 
-router = APIRouter()
+load_dotenv()
 
-@router.post("/scan-prescription")
-async def scan_prescription(file: UploadFile = File(...)):
-    # 1. Save the uploaded file temporarily
-    temp_path = f"temp_{file.filename}"
-    with open(temp_path, "wb") as buffer:
-        buffer.write(await file.read())
+# Initialize the Gemini Client
+client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+
+def analyze_prescription(image_path):
+    """
+    Takes a local image path, sends it to Gemini, and returns structured JSON.
+    """
+    img = Image.open(image_path)
     
-    # 2. Call your Gemini logic
-    results = analyze_prescription(temp_path)
+    prompt = """
+    You are a medical prescription assistant. 
+    Look at this image and extract the medications. 
+    Return the data ONLY as a JSON list. 
     
-    # 3. Clean up and return
-    os.remove(temp_path)
-    return {"status": "success", "data": results}   
+    Format:
+    [
+      {"medication_name": "Name", "dosage": "Amount", "schedule": "Frequency"}
+    ]
+    """
+    
+    # We use the ID you found earlier (e.g., gemini-1.5-flash)
+    response = client.models.generate_content(
+        model="gemini-1.5-flash",
+        contents=[prompt, img]
+    )
+    
+    # Clean and parse JSON
+    clean_text = response.text.replace('```json', '').replace('```', '').strip()
+    return json.loads(clean_text)
