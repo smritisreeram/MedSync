@@ -1,0 +1,1 @@
+from app.models.medication import Medication

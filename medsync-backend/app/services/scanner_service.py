@@ -6,7 +6,6 @@ import json
 
 load_dotenv()
 
-# Initialize the Gemini Client
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
 def analyze_prescription(image_path):
@@ -16,22 +15,26 @@ def analyze_prescription(image_path):
     img = Image.open(image_path)
     
     prompt = """
-    You are a medical prescription assistant. 
-    Look at this image and extract the medications. 
-    Return the data ONLY as a JSON list. 
+    ACT AS: An expert medical pharmacist.
+    TASK: Extract medication data from this prescription image.
     
-    Format:
-    [
-      {"medication_name": "Name", "dosage": "Amount", "schedule": "Frequency"}
-    ]
+    CRITICAL INSTRUCTIONS FOR 'schedule':
+    You must map medical abbreviations to these specific phrases:
+    - If you see "TDS", "TID", or "1-1-1", write "Three times a day".
+    - If you see "BID", "BD", or "1-0-1", write "Twice a day".
+    - If you see "OD", "Daily", or "1-0-0", write "Once a day".
+    - If you see "Q6H", write "Every 6 hours".
+    - If you see "SOS" or "PRN", write "As needed".
+    
+    If the handwriting is messy, use your medical knowledge to identify the drug name.
+    
+    OUTPUT FORMAT: Return ONLY a JSON list of objects.
+    Example: [{"medication_name": "Calpol", "dosage": "500mg", "schedule": "Every 6 hours"}]
     """
-    
-    # We use the ID you found earlier (e.g., gemini-1.5-flash)
+
     response = client.models.generate_content(
-        model="gemini-1.5-flash",
+        model="gemini-2.5-flash",
         contents=[prompt, img]
     )
-    
-    # Clean and parse JSON
     clean_text = response.text.replace('```json', '').replace('```', '').strip()
     return json.loads(clean_text)
